@@ -30,6 +30,7 @@ void CleanupRenderTarget();
 void ShowMainWindow(AppState& state, ImGuiIO& io);
 void CaptureFih(AppState& state, Status& status);
 void debugWindow(AppState& state);
+void pressKeyMouseLeft(int KeyUpMillisec);
 ImGuiStyle SetupImGuiStyle();
 
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -43,7 +44,7 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	//statements, windows, etc
 	AppState state;
 	Vision vizu;
-	static Status status = STOPPED;
+	Status status = STOPPED;
 
 	//window
 	WNDCLASSEXW wc = { sizeof(wc), ACS_TRANSPARENT, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"_", nullptr };
@@ -108,7 +109,6 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 		if (state.exit)
 			break;
 
-		SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 
 		//handle window mini,azed or screen locked
 		if (g_SwapChainOccluded && g_pSwapChain->Present(0, DXGI_PRESENT_TEST) == DXGI_STATUS_OCCLUDED)
@@ -148,11 +148,10 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 				vizu.selectAreaWithMouse(state);
 			}
 			
-			if (!fishingThread.joinable()) {
-				status = STOPPED;
+			if (!fishingThread.joinable()) { 
 				fishingThread = std::thread(CaptureFih, std::ref(state), std::ref(status));
-				fishingThread.detach();
 			}
+
 
 			vizu.getDesktopMat(state);
 			vizu.getImage(state);
@@ -165,6 +164,9 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 		else {
 			if (cv::getWindowProperty(state.visionWinName, cv::WND_PROP_VISIBLE) > 0) { //cv::getWindowProperty(state.visionWinName, cv::WND_PROP_VISIBLE) > 0
 				vizu.destroyImage(state);
+			}
+			if (fishingThread.joinable()) {
+				fishingThread.join();
 			}
 		}
 		
@@ -358,7 +360,7 @@ void CaptureFih(AppState& state, Status& status)
 {
 	state.statusMessage = "start fishing";
 
-	while (state.fihing.load() && status != FINISHED)
+	while (state.fihing.load())
 	{
 		cv::Rect currentRect = state.boundRect.load(); 
 
@@ -366,23 +368,22 @@ void CaptureFih(AppState& state, Status& status)
 		{
 		case STOPPED:
 			state.statusMessage = "stopped";
-			if (state.fihing.load())
-			{
+			
 				status = STARTED;
-			}
+			
 			break;
 
 		case STARTED: //тут  должно быть закидывание удочки
-			state.statusMessage = "thrown"; //тут нужно дополнительное состо€ние чтобы каждый цикл не кидать
-			keybd_event(VK_LBUTTON, 0, 0, 0);
-			std::this_thread::sleep_for(std::chrono::milliseconds(1053));
-			keybd_event(VK_LBUTTON, 0, KEYEVENTF_KEYUP, 0);
+			state.statusMessage = "thrown"; 
+			pressKeyMouseLeft(1500);
 			status = LOOKING;
+			break;
 
 		case LOOKING:
 			state.statusMessage = "looking for bobber";
 				if (currentRect.area() > 400) {
 					status = FOUND;
+					break;
 				}
 			break;
 		case FOUND:
@@ -390,7 +391,7 @@ void CaptureFih(AppState& state, Status& status)
 			if (currentRect.area() < 400) 
 			{
 				status = CATCH;
-
+				pressKeyMouseLeft(10);
 				break;
 			}
 			
@@ -399,10 +400,7 @@ void CaptureFih(AppState& state, Status& status)
 		case CATCH:
 			state.statusMessage = "catch";
 
-			keybd_event(VK_LBUTTON, 0, 0, 0);
-			std::this_thread::sleep_for(std::chrono::milliseconds(50));
-			keybd_event(VK_LBUTTON, 0, KEYEVENTF_KEYUP, 0);
-			// ѕереключитьс€ на вытаскивание рибы
+			
 			
 			status = PULL;
 			break;
@@ -410,7 +408,7 @@ void CaptureFih(AppState& state, Status& status)
 		case PULL:
 			state.statusMessage = "pull";
 			//std::this_thread::sleep_for(std::chrono::seconds(3));
-			// Ћогика дл€ контрол€ положени€ рыбы
+			
 			status = FINISHED;
 			break;
 
@@ -423,21 +421,37 @@ void CaptureFih(AppState& state, Status& status)
 
 		case FINISHED:
 			state.statusMessage = "Fihing end";
-			state.fihing = false;
+			//state.fihing = false;
+			std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+			status = STARTED;
 			break;
-
 		default:
 			break;
 		}
 
-		//  оротка€ задержка дл€ предотвращени€ 100% CPU
+		
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
-
+	status = STOPPED;
 	state.statusMessage = "Not watching";
 }
+//at least 10 ms between inputs
+void pressKeyMouseLeft(int KeyUpMillisec) {
+	//SHORT key;
+	//UINT mappedKey;
+	
+	INPUT input = { 0 };
+	//key = VkKeyScan('i');
 
-
+	//mappedKey = MapVirtualKey(LOBYTE(key), 0);
+	input.type = INPUT_MOUSE;
+	input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+	//input.ki.wScan = mappedKey;
+	SendInput(1, &input, sizeof(input));
+	std::this_thread::sleep_for(std::chrono::milliseconds(KeyUpMillisec));
+	input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+	SendInput(1, &input, sizeof(input));
+}
 
 
 
