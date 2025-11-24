@@ -13,7 +13,7 @@
 #include<imgui/imgui_impl_win32.h>
 
 #include"Utility.h"
-
+//#include"Vision.h"
 
 static ID3D11Device*           g_pd3dDevice = nullptr;
 static ID3D11DeviceContext*    g_pd3dDeviceContext = nullptr;
@@ -43,7 +43,7 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	ImGui_ImplWin32_EnableDpiAwareness();
 	//statements, windows, etc
 	AppState state;
-	Vision vizu;
+	Vision vizu(state);
 	Status status = STOPPED;
 
 	//window
@@ -144,26 +144,20 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 
 		if (state.fihing.load()) {
 
-			if (!state.areaSelected) {
-				vizu.selectAreaWithMouse(state);
-			}
-			
+			vizu.startCapture();
+
 			if (!fishingThread.joinable()) { 
 				fishingThread = std::thread(CaptureFih, std::ref(state), std::ref(status));
 			}
 
-
-			vizu.getDesktopMat(state);
-			vizu.getImage(state);
-			vizu.showImage(state);
 
 			/*if (GetAsyncKeyState(state.stopFih) & 0x8000) {
 				state.fihing = false;
 			}*/
 		}
 		else {
-			if (cv::getWindowProperty(state.visionWinName, cv::WND_PROP_VISIBLE) > 0) { //cv::getWindowProperty(state.visionWinName, cv::WND_PROP_VISIBLE) > 0
-				vizu.destroyImage(state);
+			if (cv::getWindowProperty(vizu.winName, cv::WND_PROP_VISIBLE) > 0) { //cv::getWindowProperty(state.visionWinName, cv::WND_PROP_VISIBLE) > 0
+				vizu.stopCapture();
 			}
 			if (fishingThread.joinable()) {
 				fishingThread.join();
@@ -356,7 +350,7 @@ void debugWindow(AppState& state)
 //		break;
 //	}
 //}
-void CaptureFih(AppState& state, Status& status) 
+void CaptureFih(AppState& state, Status& status) // will be in Vision class
 {
 	state.statusMessage = "start fishing";
 
