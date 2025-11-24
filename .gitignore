@@ -1,2 +1,5 @@
 #blya
 .vs/
+*.vsxproj
+*.user
+*.vcxproj.filters
