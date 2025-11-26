@@ -12,8 +12,8 @@
 #include<imgui/imgui_impl_dx11.h>
 #include<imgui/imgui_impl_win32.h>
 
-#include"Utility.h"
-//#include"Vision.h"
+//#include"Utility.h"
+#include"Vision.h" //Utility is already included in vision.h
 
 static ID3D11Device*           g_pd3dDevice = nullptr;
 static ID3D11DeviceContext*    g_pd3dDeviceContext = nullptr;
@@ -28,8 +28,8 @@ void CleanupDeviceD3D();
 void CreateRenderTarget();
 void CleanupRenderTarget();
 void ShowMainWindow(AppState& state, ImGuiIO& io);
-void CaptureFih(AppState& state, Status& status);
-void debugWindow(AppState& state);
+//void CaptureFih(AppState& state, Status& status);
+void debugWindow(std::string statusMessage);
 void pressKeyMouseLeft(int KeyUpMillisec);
 ImGuiStyle SetupImGuiStyle();
 
@@ -43,8 +43,8 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 	ImGui_ImplWin32_EnableDpiAwareness();
 	//statements, windows, etc
 	AppState state;
-	Vision vizu(state);
-	Status status = STOPPED;
+	Vision vizu(state.areaRadius);
+	//Status status = STOPPED;
 
 	//window
 	WNDCLASSEXW wc = { sizeof(wc), ACS_TRANSPARENT, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"_", nullptr };
@@ -140,14 +140,12 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 			ImGui::ShowDemoWindow(&state.showDemoWindow);
 
 		if (state.debug)
-			debugWindow(state);
+			debugWindow(vizu.statusMessage);
 
 		if (state.fihing.load()) {
 
-			vizu.startCapture();
-
 			if (!fishingThread.joinable()) { 
-				fishingThread = std::thread(CaptureFih, std::ref(state), std::ref(status));
+				fishingThread = std::thread(&Vision::startCapture, &vizu, std::ref(state.fihing));
 			}
 
 
@@ -156,9 +154,7 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 			}*/
 		}
 		else {
-			if (cv::getWindowProperty(vizu.winName, cv::WND_PROP_VISIBLE) > 0) { //cv::getWindowProperty(state.visionWinName, cv::WND_PROP_VISIBLE) > 0
-				vizu.stopCapture();
-			}
+			
 			if (fishingThread.joinable()) {
 				fishingThread.join();
 			}
@@ -284,11 +280,11 @@ void ShowMainWindow(AppState& state, ImGuiIO& io)
 	//ImGui::ColorEdit3("clear color", (float*)&state.clear_color);
 	if (ImGui::Button("Start"))
 	{
-		state.fihing = true;
+		state.fihing.store(true);
 	}
 	if (ImGui::Button("Stop"))
 	{
-		state.fihing = false;
+		state.fihing.store(false);
 	}
 
 	if (ImGui::Button("close app"))
@@ -298,155 +294,13 @@ void ShowMainWindow(AppState& state, ImGuiIO& io)
 	ImGui::End();
 }
 
-void debugWindow(AppState& state)
+void debugWindow(std::string statusMessage)
 {
 	ImGui::SetNextWindowSize(ImVec2(200, 200));
 	ImGui::Begin("debug");
-	ImGui::Text(state.statusMessage.c_str());
+	ImGui::Text(statusMessage.c_str());
 	ImGui::End();
 }
-
-//void CaptureFih(AppState& state, Status status) //запускается там где if state.fihing в отдельном потоке
-//{
-//	cv::Rect boundRect = state.boundRect.load();
-//	if (status != STARTED && boundRect.area() > 400)
-//	{
-//		status = STARTED;
-//	}
-//	switch (status)
-//	{
-//	case STOPPED:
-//		break;
-//	case STARTED:
-//		state.statusMessage = "Слежу";
-//		while (true) //надо сделать какую-то логику для изменения положения объекта
-//		{            //или нет, скоро узнаем
-//			if (boundRect.area() < 400)
-//			{
-//				status = FOUND;
-//				break;
-//			}
-//			Sleep(1);
-//		}
-//		break;
-//	case FOUND:
-//		state.statusMessage = "Нашёл";
-//	case CATCH: 
-//		state.statusMessage = "Вытащил";
-//		//тут должна быть имитация нажатия лкм
-//		keybd_event(VK_LBUTTON, 0, 0, 0);
-//		// Отпускание клавиши
-//		keybd_event(VK_LBUTTON, 0, KEYEVENTF_KEYUP, 0);
-//		
-//	case PULL: //для этого точно нужно положение объекта
-//		state.statusMessage = " ";
-//		//top left 886, 538, bottom right 1038, 556
-//		break;
-//	case RELEASE: //для этого тоже
-//		break;
-//	case FINISHED: //после окончание снова закинуть
-//		break;
-//	default:
-//		break;
-//	}
-//}
-void CaptureFih(AppState& state, Status& status) // will be in Vision class
-{
-	state.statusMessage = "start fishing";
-
-	while (state.fihing.load())
-	{
-		cv::Rect currentRect = state.boundRect.load(); 
-
-		switch (status)
-		{
-		case STOPPED:
-			state.statusMessage = "stopped";
-			
-				status = STARTED;
-			
-			break;
-
-		case STARTED: //тут  должно быть закидывание удочки
-			state.statusMessage = "thrown"; 
-			pressKeyMouseLeft(1500);
-			status = LOOKING;
-			break;
-
-		case LOOKING:
-			state.statusMessage = "looking for bobber";
-				if (currentRect.area() > 400) {
-					status = FOUND;
-					break;
-				}
-			break;
-		case FOUND:
-			state.statusMessage = "found and watching";
-			if (currentRect.area() < 400) 
-			{
-				status = CATCH;
-				pressKeyMouseLeft(10);
-				break;
-			}
-			
-			break;
-
-		case CATCH:
-			state.statusMessage = "catch";
-
-			
-			
-			status = PULL;
-			break;
-
-		case PULL:
-			state.statusMessage = "pull";
-			//std::this_thread::sleep_for(std::chrono::seconds(3));
-			
-			status = FINISHED;
-			break;
-
-		case RELEASE:
-			state.statusMessage = "Release";
-			//std::this_thread::sleep_for(std::chrono::seconds(3));
-			
-			status = FINISHED;
-			break;
-
-		case FINISHED:
-			state.statusMessage = "Fihing end";
-			//state.fihing = false;
-			std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-			status = STARTED;
-			break;
-		default:
-			break;
-		}
-
-		
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
-	}
-	status = STOPPED;
-	state.statusMessage = "Not watching";
-}
-//at least 10 ms between inputs
-void pressKeyMouseLeft(int KeyUpMillisec) {
-	//SHORT key;
-	//UINT mappedKey;
-	
-	INPUT input = { 0 };
-	//key = VkKeyScan('i');
-
-	//mappedKey = MapVirtualKey(LOBYTE(key), 0);
-	input.type = INPUT_MOUSE;
-	input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-	//input.ki.wScan = mappedKey;
-	SendInput(1, &input, sizeof(input));
-	std::this_thread::sleep_for(std::chrono::milliseconds(KeyUpMillisec));
-	input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
-	SendInput(1, &input, sizeof(input));
-}
-
 
 
 // Forward declare message handler from imgui_impl_win32.cpp
