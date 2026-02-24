@@ -24,7 +24,7 @@ Vision::~Vision()
 	}
 
 }
-void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& shouldExit) {
+void Vision::mainCapture(std::atomic<bool>& fihingState, std::atomic<bool>& shouldExit) {
 
 
 	if (config.windowedCapture) {
@@ -105,16 +105,13 @@ void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& sho
 	if (config.workTime != NULL) {
 		startWork = std::chrono::high_resolution_clock::now();
 	}
-	if (config.restCycles != NULL) {
-
-	}
 	
 	
 	while (fihingState.load())
 	{
 		if (shouldExit.load()) { break; }
 
-			CaptureFih();
+			catchFihProcess();
 
 			if (config.workTime != NULL) {
 				auto endWork = std::chrono::high_resolution_clock::now();
@@ -130,7 +127,7 @@ void Vision::startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& sho
 	
 }
 
-void Vision::CaptureFih()
+void Vision::catchFihProcess()
 {   
 	
 	switch (status)
@@ -235,7 +232,7 @@ void Vision::CaptureFih()
 			if (restCounter >= config.restCycles) {
 				statusMessage = "resting";
 				timerActive = false;
-				std::this_thread::sleep_for(std::chrono::minutes(2));
+				std::this_thread::sleep_for(std::chrono::minutes(3));
 				restCounter = 0;
 				clockStart = std::chrono::high_resolution_clock::now();
 				timerActive = true;
@@ -1152,6 +1149,21 @@ void Vision::getWindowMat() {
 
 		//copy data into the bitmap
 		BitBlt(memoryDeviceContext, 0, 0, screenWidth, screenHeight, deviceContext, 0, 0, SRCCOPY);
+	}
+}
+
+int Vision::countThrowTime() {
+	POINT cursorPos{};
+	GetCursorPos(&cursorPos);
+	double distance = sqrt(
+		pow(cursorPos.x - windowCenter.x, 2) +
+		pow(cursorPos.y - windowCenter.y, 2)
+	);
+	if (config.windowedCapture) {
+
+	}
+	else {
+
 	}
 }
 

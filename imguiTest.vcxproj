@@ -126,6 +126,7 @@
     <IntDir>$(SolutionDir)build\intermediates</IntDir>
     <IncludePath>E:\IT\stuff\opencv\build\include;E:\IT\repos\imguiTest\src;E:\IT\repos\imguiTest\external;$(IncludePath)</IncludePath>
     <LibraryPath>E:\IT\repos\imguiTest\external;E:\IT\stuff\opencv\build\x64\vc16\lib;$(LibraryPath)</LibraryPath>
+    <GenerateManifest>true</GenerateManifest>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

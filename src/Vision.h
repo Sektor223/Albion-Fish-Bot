@@ -65,6 +65,9 @@ private:
 	cv::Mat fullScale = cv::Mat();
 	/////////////////////////
 	cv::Mat halved;
+	/// <summary>
+	/// center for both windowed capture and fullscreen capture
+	/// </summary>
 	POINT windowCenter;
 	//in vision class constructor
 	Config& config;
@@ -209,7 +212,7 @@ private:
 	//////////////////////////////////////////////////////////////////////////
 	
 
-	void CaptureFih();
+	void catchFihProcess();
 	void stopCapture();
 	void pressKeyMouseLeft(int KeyUpMillisec);
 	void sendKeyPress(int keyCode);
@@ -234,8 +237,10 @@ private:
 	//it was 1 function, but its not work in case
 	void RestartingP2();
 	cv::Mat getTemplateInTemplate(matchingEnum backTemplate, matchingEnum frontTemplate, cv::Rect& backRect);
-	//void getImageInImage(matchingEnum firstImage, matchingEnum secondTemplate);
+	//get mat for both windowed and fullscreen
 	void getWindowMat();
+
+	int countThrowTime();
 
 	
 	
@@ -256,7 +261,7 @@ public:
 	//time start for work timer
 	std::chrono::steady_clock::time_point startWork;
 	
-	void startCapture(std::atomic<bool>& fihingState, std::atomic<bool>& shouldExit);
+	void mainCapture(std::atomic<bool>& fihingState, std::atomic<bool>& shouldExit);
 	Vision(Config& config);
 	~Vision();
 	

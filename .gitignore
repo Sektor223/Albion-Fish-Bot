@@ -1,6 +1,5 @@
-#blya
+#ignore
 .vs/
-*.sln
 *.suo
 *.aps
 *.ncb

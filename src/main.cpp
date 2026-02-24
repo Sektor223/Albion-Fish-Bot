@@ -224,7 +224,7 @@ INT APIENTRY WinMain(HINSTANCE instance, HINSTANCE, PSTR, INT cmd_show) {
 		   if (state.fihing.load()) {
 
 			  if (!state.fishingThread.joinable()) {
-				state.fishingThread = std::thread(&Vision::startCapture, &vizu, std::ref(state.fihing), std::ref(state.shouldExit));
+				state.fishingThread = std::thread(&Vision::mainCapture, &vizu, std::ref(state.fihing), std::ref(state.shouldExit));
 			  }
 
 			  if (GetAsyncKeyState(config.stopFihKey) & 0x8000) {
